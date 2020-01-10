@@ -2,4 +2,8 @@ html
   head
     title= title
   body
-    h4= number
+    h1 Page Name = #{url}
+    h4 Total number of words = #{number}
+    ul
+      each val, index in result
+        li= index + ': ' + val
