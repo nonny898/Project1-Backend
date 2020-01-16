@@ -12,4 +12,4 @@ RUN npm ci
 
 COPY --chown=node:node . .
 
-CMD ["node", "app.js"]
+CMD ["node", "index.js"]

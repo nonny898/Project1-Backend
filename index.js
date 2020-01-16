@@ -1,70 +1,71 @@
 const express = require('express');
 const request = require('request');
 const cheerio = require('cheerio');
+const AsyncLock = require('async-lock');
+
+const wordCount = require('./wordCount');
+const outPut = require('./output');
+
+const lock = new AsyncLock();
 
 const app = express();
 app.set('view engine', 'pug');
 
+const cache = {};
+
 app.get('/', function(req, res) {
-  res.render('index', { title: 'Home', message: 'Hello there!' });
+  res.status(200);
 });
 
 app.get('/wc', function(req, res) {
-  url = req.query.target;
-  request(url, function(error, response, html) {
-    if (!error) {
-      const $ = cheerio.load(html);
-      const sparseArray = $('body')
-        .text()
-        .replace(/[^A-Za-z]/g, ' ')
-        .split(' ');
-      const cleanArray = sparseArray.filter(function(el) {
-        return el != '';
-      });
-      let total = 0;
-      let tallies = {};
-      cleanArray.forEach((word) => {
-        if (word.length < 20) {
-          total += 1;
-          tallies[word] = tallies[word] ? tallies[word] + 1 : 1;
+  // console.log('Running...');
+  const url = req.query.target;
+  lock.acquire(
+    url,
+    function(done) {
+      request(url, function(error, response, html) {
+        if (!error) {
+          const force = req.query.force;
+          let accept = req.headers.accept;
+          if (accept === undefined) {
+            accept = 'text/html';
+          } else {
+            accept = accept.split(',')[0];
+          }
+          const allURL = Object.keys(cache);
+          // console.log('Checking for cache...');
+          if (allURL.length > 10) {
+            const oldest = allURL[0];
+            delete cache[oldest];
+          }
+          const etag = response.headers.etag;
+          const webCache = cache[url];
+          if (force !== 'true' && url in cache && etag === webCache['etag']) {
+            res.setHeader('Cache-Control', 'from-cache');
+            outPut.mainOutput(res, url, accept, webCache);
+          } else {
+            res.setHeader('Cache-Control', 'no-cache');
+            const $ = cheerio.load(html);
+            cache[url] = wordCount.counter($('body'), etag);
+            const webCache = cache[url];
+            outPut.mainOutput(res, url, accept, webCache);
+          }
+        } else {
+          // console.log('there is something wrong with the target');
+          res.send('Target URL problem.');
         }
       });
-      const frequencies = [];
-      Object.values(tallies).forEach((value) => {
-        frequencies.push(value);
-      });
-      const topTenFreq = frequencies
-        .sort((a, b) => {
-          return b - a;
-        })
-        .slice(0, 10);
-      const topTenWord = {};
-      Object.keys(tallies).forEach((values) => {
-        topTenFreq.forEach((freq) => {
-          if (tallies[values] === freq) {
-            topTenWord[values] = freq;
-            topTenFreq.splice(topTenFreq.indexOf(freq), 1);
-          }
-        });
-      });
-      const result = {};
-      Object.keys(topTenWord)
-        .sort((a, b) => {
-          return topTenWord[b] - topTenWord[a];
-        })
-        .forEach((key) => {
-          result[key] = topTenWord[key];
-        });
-      res.render('wordCount', {
-        title: 'WordCount',
-        url: url,
-        number: total,
-        result: result,
-      });
-    } else {
-      console.log(error);
-    }
-  });
+      done();
+    },
+    function(err, ret) {}
+  );
+});
+
+app.get('*', (req, res, next) => {
+  res.status(200).send('Sorry, requested page not found.');
+  next();
 });
 
 app.listen(3000);
+
+module.exports = app;

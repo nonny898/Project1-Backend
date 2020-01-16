@@ -2,8 +2,8 @@ html
   head
     title= title
   body
-    h1 Page Name = #{url}
+    h1 Target Page = #{url}
     h4 Total number of words = #{number}
     ul
-      each val, index in result
-        li= index + ': ' + val
+      each index in result
+        li= index
