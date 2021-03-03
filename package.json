@@ -16,7 +16,7 @@
     "express": "^4.17.1",
     "keyword-extractor": "0.0.18",
     "promise": "^8.0.3",
-    "pug": "^2.0.4",
+    "pug": "^3.0.1",
     "request": "^2.88.0"
   },
   "devDependencies": {
