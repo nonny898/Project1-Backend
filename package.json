@@ -13,7 +13,7 @@
   "dependencies": {
     "async-lock": "^1.2.2",
     "cheerio": "^1.0.0-rc.3",
-    "express": "^4.17.1",
+    "express": "^4.17.3",
     "keyword-extractor": "0.0.18",
     "promise": "^8.0.3",
     "pug": "^2.0.4",
